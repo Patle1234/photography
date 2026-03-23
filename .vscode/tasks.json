@@ -1,0 +1,49 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "npm install",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"problemMatcher": [
+				"$npm-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "npm install lock",
+			"type": "shell",
+			"command": "npm install --package-lock-only",
+			"isBackground": false,
+			"problemMatcher": [
+				"$npm-stylish"
+			]
+		},
+		{
+			"label": "regen-lock",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install",
+				"--package-lock-only"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "regen lock",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install",
+				"--package-lock-only"
+			],
+			"problemMatcher": [
+				"$npm-stylish"
+			],
+			"group": "build"
+		}
+	]
+}
