@@ -14,6 +14,7 @@ interface Photo {
 export default function PhotoGallery() {
 	const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
 	const [photos, setPhotos] = useState<Photo[]>([]);
+	const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 	function shufflePhotos() {
 		setPhotos((prevPhotos) => {
@@ -29,12 +30,12 @@ export default function PhotoGallery() {
 	useEffect(() => {
 		async function loadPhotos() {
 			try {
-				const response = await fetch('/api/photos');
+				const response = await fetch(`${basePath}/api/photos`);
 				const data = await response.json();
-				
+            
 				const photoList: Photo[] = data.photos.map((filename: string, index: number) => ({
 					id: (index + 1).toString(),
-					src: `/photos/${filename}`,
+					src: `${basePath}/photos/${filename}`,
 					alt: filename.replace(/\.[^/.]+$/, "").replace(/-|_/g, " "), 
 				}));
 
@@ -108,7 +109,7 @@ export default function PhotoGallery() {
 							>
 								<div className="relative overflow-hidden">
 									<Image
-										src={photo.src || "/placeholder.svg"}
+										src={photo.src || `${basePath}/placeholder.svg`}
 										alt={photo.alt}
 										width={400}
 										height={600}
@@ -116,7 +117,7 @@ export default function PhotoGallery() {
 										onError={(e) => {
 											//placeholder if image doesn't exist
 											const target = e.target as HTMLImageElement;
-											target.src = "/placeholder.svg?height=600&width=400";
+											target.src = `${basePath}/placeholder.svg?height=600&width=400`;
 										}}
 									/>
 										<div className="absolute inset-0 bg-[#0F172A]/0 group-hover:bg-[#0F172A]/10 transition-colors duration-300" />
@@ -138,14 +139,14 @@ export default function PhotoGallery() {
 						<div className="relative w-full h-full flex items-center justify-center">
 							<div className="relative max-w-full max-h-full">
 								<Image
-									src={selectedPhoto.src || "/placeholder.svg"}
+									src={selectedPhoto.src || `${basePath}/placeholder.svg`}
 									alt={selectedPhoto.alt}
 									width={1200}
 									height={800}
 									className="max-w-full max-h-[95vh] object-contain"
 									onError={(e) => {
 										const target = e.target as HTMLImageElement;
-										target.src = "/placeholder.svg?height=800&width=1200";
+										target.src = `${basePath}/placeholder.svg?height=800&width=1200`;
 									}}
 								/>
 							</div>
