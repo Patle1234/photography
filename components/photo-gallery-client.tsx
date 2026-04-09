@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { LuShuffle } from "react-icons/lu";
+import { LuChevronLeft, LuChevronRight, LuShuffle } from "react-icons/lu";
 
 interface Photo {
 	id: string;
@@ -20,8 +20,49 @@ export default function PhotoGalleryClient({
 	initialPhotos,
 	basePath,
 }: PhotoGalleryClientProps) {
-	const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+	const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 	const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+	const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+	const selectedPhoto = selectedIndex !== null ? photos[selectedIndex] : null;
+
+	const goToNext = useCallback(() => {
+		setSelectedIndex((prev) => {
+			if (prev === null || photos.length === 0) return prev;
+			return (prev + 1) % photos.length;
+		});
+	}, [photos.length]);
+
+	const goToPrevious = useCallback(() => {
+		setSelectedIndex((prev) => {
+			if (prev === null || photos.length === 0) return prev;
+			return (prev - 1 + photos.length) % photos.length;
+		});
+	}, [photos.length]);
+
+	useEffect(() => {
+		if (selectedIndex === null) return;
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "ArrowRight") {
+				event.preventDefault();
+				goToNext();
+			}
+			if (event.key === "ArrowLeft") {
+				event.preventDefault();
+				goToPrevious();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [selectedIndex, goToNext, goToPrevious]);
+
+	useEffect(() => {
+		if (selectedIndex !== null && selectedIndex >= photos.length) {
+			setSelectedIndex(photos.length > 0 ? photos.length - 1 : null);
+		}
+	}, [photos.length, selectedIndex]);
 
 	function shufflePhotos() {
 		setPhotos((prevPhotos) => {
@@ -83,7 +124,7 @@ export default function PhotoGalleryClient({
 							<div
 								key={photo.id}
 								className="break-inside-avoid mb-4 group cursor-pointer overflow-hidden bg-gray-900 hover:bg-gray-800 transition-all duration-300 rounded-lg"
-								onClick={() => setSelectedPhoto(photo)}
+								onClick={() => setSelectedIndex(index)}
 							>
 								<div className="relative overflow-hidden">
 									<Image
@@ -108,10 +149,32 @@ export default function PhotoGalleryClient({
 			</main>
 
 			{selectedPhoto && (
-				<Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+				<Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedIndex(null)}>
 					<DialogContent className="max-w-[95vw] max-h-[95vh] bg-[#0F172A] border-gray-800 p-0 overflow-hidden">
 						<DialogTitle className="sr-only">{selectedPhoto.alt}</DialogTitle>
-						<div className="relative w-full h-full flex items-center justify-center">
+						<div
+							className="relative w-full h-full flex items-center justify-center"
+							onTouchStart={(e) => setTouchStartX(e.touches[0]?.clientX ?? null)}
+							onTouchEnd={(e) => {
+								if (touchStartX === null) return;
+								const touchEndX = e.changedTouches[0]?.clientX ?? touchStartX;
+								const deltaX = touchEndX - touchStartX;
+								const swipeThreshold = 50;
+
+								if (deltaX > swipeThreshold) goToPrevious();
+								if (deltaX < -swipeThreshold) goToNext();
+
+								setTouchStartX(null);
+							}}
+						>
+							<button
+								type="button"
+								onClick={goToPrevious}
+								className="absolute left-2 sm:left-4 z-10 rounded-full bg-black/40 text-white p-2 sm:p-3 hover:bg-black/60 transition"
+								aria-label="Previous photo"
+							>
+								<LuChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+							</button>
 							<div className="relative max-w-full max-h-full">
 								<Image
 									src={selectedPhoto.src || `${basePath}/placeholder.svg`}
@@ -124,6 +187,17 @@ export default function PhotoGalleryClient({
 										target.src = `${basePath}/placeholder.svg?height=800&width=1200`;
 									}}
 								/>
+							</div>
+							<button
+								type="button"
+								onClick={goToNext}
+								className="absolute right-2 sm:right-4 z-10 rounded-full bg-black/40 text-white p-2 sm:p-3 hover:bg-black/60 transition"
+								aria-label="Next photo"
+							>
+								<LuChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+							</button>
+							<div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 text-white text-xs sm:text-sm px-3 py-1">
+								{(selectedIndex ?? 0) + 1} / {photos.length}
 							</div>
 						</div>
 					</DialogContent>
