@@ -8,6 +8,7 @@ import { LuChevronLeft, LuChevronRight, LuShuffle } from "react-icons/lu";
 interface Photo {
 	id: string;
 	src: string;
+	thumbnailSrc: string;
 	alt: string;
 }
 
@@ -184,7 +185,7 @@ export default function PhotoGalleryClient({
 							>
 								<div className="relative overflow-hidden">
 									<Image
-										src={photo.src || `${basePath}/placeholder.svg`}
+										src={photo.thumbnailSrc || `${basePath}/placeholder.svg`}
 										alt={photo.alt}
 										width={400}
 										height={600}

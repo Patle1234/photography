@@ -7,6 +7,7 @@ export const revalidate = 3600;
 interface Photo {
 	id: string;
 	src: string;
+	thumbnailSrc: string;
 	alt: string;
 }
 
@@ -53,6 +54,7 @@ export default function PhotoGalleryPage() {
 				return {
 					id: photoPath,
 					src: `${basePath}/photos/${photoPath}`,
+					thumbnailSrc: `${basePath}/thumbnails/${photoPath}`,
 					alt: filename.replace(/\.[^/.]+$/, "").replace(/-|_/g, " "),
 				};
 			});
