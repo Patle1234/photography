@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { LuChevronLeft, LuChevronRight, LuShuffle } from "react-icons/lu";
@@ -16,15 +16,52 @@ interface PhotoGalleryClientProps {
 	basePath: string;
 }
 
+function getShuffledPhotos(photos: Photo[]) {
+	const shuffled = [...photos];
+
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+	}
+
+	return shuffled;
+}
+
 export default function PhotoGalleryClient({
 	initialPhotos,
 	basePath,
 }: PhotoGalleryClientProps) {
 	const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-	const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+	const [photos, setPhotos] = useState<Photo[]>([]);
 	const [touchStartX, setTouchStartX] = useState<number | null>(null);
+	const [loadedCount, setLoadedCount] = useState(0);
+	const [isPreparing, setIsPreparing] = useState(initialPhotos.length > 0);
+	const loadedPhotoIds = useRef(new Set<string>());
 
 	const selectedPhoto = selectedIndex !== null ? photos[selectedIndex] : null;
+
+	useEffect(() => {
+		loadedPhotoIds.current.clear();
+		setLoadedCount(0);
+		setSelectedIndex(null);
+		setPhotos(getShuffledPhotos(initialPhotos));
+		setIsPreparing(initialPhotos.length > 0);
+	}, [initialPhotos]);
+
+	const markPhotoLoaded = useCallback(
+		(photoId: string) => {
+			if (loadedPhotoIds.current.has(photoId)) return;
+
+			loadedPhotoIds.current.add(photoId);
+			const nextLoadedCount = loadedPhotoIds.current.size;
+			setLoadedCount(nextLoadedCount);
+
+			if (nextLoadedCount >= photos.length) {
+				setIsPreparing(false);
+			}
+		},
+		[photos.length],
+	);
 
 	const goToNext = useCallback(() => {
 		setSelectedIndex((prev) => {
@@ -65,14 +102,7 @@ export default function PhotoGalleryClient({
 	}, [photos.length, selectedIndex]);
 
 	function shufflePhotos() {
-		setPhotos((prevPhotos) => {
-			const shuffled = [...prevPhotos];
-			for (let i = shuffled.length - 1; i > 0; i--) {
-				const j = Math.floor(Math.random() * (i + 1));
-				[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-			}
-			return shuffled;
-		});
+		setPhotos((prevPhotos) => getShuffledPhotos(prevPhotos));
 	}
 
 	return (
@@ -82,15 +112,35 @@ export default function PhotoGalleryClient({
 					<h1 className="text-2xl font-light text-white tracking-wide">
 						Dev's 📷 Gallery
 					</h1>
-					<LuShuffle
+					<button
+						type="button"
 						onClick={shufflePhotos}
-						className="h-6 w-6 text-white cursor-pointer hover:text-gray-300 transition"
-					/>
+						disabled={isPreparing}
+						aria-label="Shuffle photos"
+						className="text-white hover:text-gray-300 transition disabled:cursor-wait disabled:opacity-40"
+					>
+						<LuShuffle className="h-6 w-6" />
+					</button>
 				</div>
 			</header>
 
-			<main className="container mx-auto px-6 py-12">
-				{photos.length === 0 ? (
+			<main className="container mx-auto px-6 py-12 min-h-[60vh]">
+				{isPreparing && (
+					<div
+						className="min-h-[50vh] flex flex-col items-center justify-center text-center"
+						aria-live="polite"
+					>
+						<div className="h-8 w-8 rounded-full border-2 border-gray-700 border-t-white animate-spin" />
+						<p className="mt-5 text-sm font-light tracking-wide text-gray-300">
+							Preparing the full gallery
+						</p>
+						<p className="mt-2 text-xs text-gray-500">
+							{loadedCount} / {initialPhotos.length} photos
+						</p>
+					</div>
+				)}
+
+				{!isPreparing && photos.length === 0 ? (
 					<div className="text-center py-12">
 						<div className="text-gray-400 mb-4">
 							<svg
@@ -118,8 +168,14 @@ export default function PhotoGalleryClient({
 							folder.
 						</p>
 					</div>
-				) : (
-					<div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-3 sm:gap-4 space-y-3 sm:space-y-4">
+				) : photos.length > 0 ? (
+					<div
+						className={`columns-2 sm:columns-2 md:columns-3 lg:columns-4 gap-3 sm:gap-4 space-y-3 sm:space-y-4 ${
+							isPreparing
+								? "invisible absolute inset-0 pointer-events-none"
+								: "visible opacity-100 transition-opacity duration-300"
+						}`}
+					>
 						{photos.map((photo, index) => (
 							<div
 								key={photo.id}
@@ -132,10 +188,12 @@ export default function PhotoGalleryClient({
 										alt={photo.alt}
 										width={400}
 										height={600}
-										priority={index < 3}
+										loading="eager"
 										className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
 										sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 50vw"
+										onLoad={() => markPhotoLoaded(photo.id)}
 										onError={(e) => {
+											markPhotoLoaded(photo.id);
 											const target = e.target as HTMLImageElement;
 											target.src = `${basePath}/placeholder.svg?height=600&width=400`;
 										}}
@@ -145,7 +203,7 @@ export default function PhotoGalleryClient({
 							</div>
 						))}
 					</div>
-				)}
+				) : null}
 			</main>
 
 			{selectedPhoto && (
